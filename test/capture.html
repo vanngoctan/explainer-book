@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Capture test</title>
+<style>
+  body { font: 17px/1.6 Georgia, serif; max-width: 720px; margin: 32px auto; padding: 0 16px; background: #fff; color: #222; }
+  pre { font: 12px/1.4 Consolas, monospace; background: #f3f3f3; padding: 8px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>Reading test page</h1>
+<h2>English</h2>
+<p id="en">The committee's decision was met with a <em>tepid</em> response. Critics argued that the plan was ostensibly about safety, but in reality it was a cost-cutting measure. Nobody wanted to rock the boat.</p>
+<h2>日本語</h2>
+<p lang="ja" id="ja">今日はとても忙しかった。彼の態度はそっけなかったが、悪気はなかったと思う。明日はゆっくり休みたい。</p>
+<h2>Tiếng Việt</h2>
+<p lang="vi" id="vi">Anh ấy nói năng rất ỡm ờ, khiến mọi người khó đoán ý. Cuộc họp kéo dài đến tận tối.</p>
+<p><input id="field" value="double-click inside this input must not save" size="50"></p>
+<h3>Store</h3>
+<pre id="dump"></pre>
+<script src="chrome-shim.js"></script>
+<script src="../lib.js"></script>
+<script src="../content.js"></script>
+<script>
+  async function dump() {
+    const items = await SoTu.getItems();
+    document.getElementById('dump').textContent = JSON.stringify(
+      items.map((i) => ({ text: i.text, kind: i.kind, context: i.context, heading: i.heading, lang: i.lang, count: i.count })),
+      null, 2);
+  }
+  chrome.storage.onChanged.addListener(dump);
+  dump();
+</script>
+</body>
+</html>

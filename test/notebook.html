@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notebook test</title>
+<link rel="stylesheet" href="../review.css">
+</head>
+<body>
+<script src="chrome-shim.js"></script>
+<script src="fixtures.js"></script>
+<script>
+  // Load the real review.html body, then its scripts, on top of the chrome shim.
+  // ?v= skips the browser cache so edits show up on reload.
+  (async () => {
+    const v = '?v=' + Date.now();
+    document.querySelector('link[rel=stylesheet]').href = '../review.css' + v;
+    const html = await (await fetch('../review.html', { cache: 'no-store' })).text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    doc.querySelectorAll('script').forEach((s) => s.remove());
+    document.body.insertAdjacentHTML('beforeend', doc.body.innerHTML);
+    for (const src of ['../lib.js', '../review.js']) {
+      await new Promise((ok, fail) => {
+        const s = document.createElement('script');
+        s.src = src + v;
+        s.onload = ok;
+        s.onerror = fail;
+        document.body.appendChild(s);
+      });
+    }
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sổ Từ</title>
+<link rel="stylesheet" href="review.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Sổ Từ</h1>
+    <p class="stats" id="stats"></p>
+  </div>
+  <input id="search" type="search" placeholder="Tìm trong sổ…" aria-label="Tìm trong sổ">
+  <button id="open-settings" class="btn ghost">Cài đặt</button>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button data-view="study">Ôn tập <span class="n"></span></button>
+  <button data-view="new" class="active">Chưa giải thích <span class="n"></span></button>
+  <button data-view="done">Đã giải thích <span class="n"></span></button>
+  <button data-view="all">Tất cả <span class="n"></span></button>
+</nav>
+
+<div class="toolbar" id="toolbar">
+  <label class="pick-all"><input type="checkbox" id="select-all"> <span id="pick-label">Chọn tất cả</span></label>
+  <div class="actions">
+    <button id="explain-api" class="btn primary" title="Gọi AI đã chọn trong Cài đặt">Giải thích bằng AI</button>
+    <button id="copy-prompt" class="btn" title="Copy prompt để dán vào Claude.ai, ChatGPT, Gemini…">Copy prompt</button>
+    <button id="paste-result" class="btn" title="Dán JSON mà AI trả về">Dán kết quả</button>
+    <button id="export-anki" class="btn" title="Xuất các mục đã giải thích sang Anki">Xuất Anki</button>
+    <label class="quiz"><input type="checkbox" id="quiz"> Tự kiểm tra</label>
+    <button id="delete-selected" class="btn ghost danger" disabled>Xoá</button>
+  </div>
+</div>
+<p class="scope" id="scope"></p>
+<div id="status" class="status" role="status" hidden></div>
+
+<section id="study" class="study" hidden>
+  <p class="study-stats" id="study-stats"></p>
+  <div id="study-card"></div>
+  <p class="study-help">Đọc mặt trước, tự nhớ nghĩa, rồi xem đáp án và tự chấm. Thẻ nhớ tốt sẽ lâu mới gặp lại, thẻ quên sẽ quay lại sớm.</p>
+</section>
+
+<main id="list"></main>
+<div id="empty" class="empty" hidden></div>
+
+<dialog id="paste-dialog">
+  <form method="dialog" class="dlg">
+    <h2>Dán kết quả từ AI</h2>
+    <p class="muted">Copy toàn bộ câu trả lời của AI (khối JSON) rồi dán vào đây.</p>
+    <textarea id="paste-text" rows="12" spellcheck="false" placeholder='```json&#10;{"items": [ … ]}&#10;```'></textarea>
+    <p id="paste-error" class="error" hidden></p>
+    <div class="dlg-actions">
+      <button value="cancel" class="btn ghost">Huỷ</button>
+      <button id="paste-import" value="default" class="btn primary">Nhập</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="settings-dialog">
+  <form method="dialog" class="dlg" id="settings-form">
+    <h2>Cài đặt</h2>
+    <p id="settings-note" class="dlg-note" hidden></p>
+
+    <label class="field">Giải thích bằng ngôn ngữ
+      <input name="explainLanguage" placeholder="Tiếng Việt">
+    </label>
+    <label class="field">Giới thiệu bản thân cho AI <span class="muted">(không bắt buộc)</span>
+      <textarea name="learnerProfile" rows="2" placeholder="VD: lập trình viên, tiếng Anh trung cấp, đang học tiếng Nhật N4"></textarea>
+    </label>
+
+    <fieldset>
+      <legend>AI giải thích <span class="muted">(không bắt buộc: không cài thì dùng Copy prompt)</span></legend>
+      <label class="check"><input type="radio" name="provider" value="anthropic"> Claude API</label>
+      <label class="check"><input type="radio" name="provider" value="openai"> OpenAI-compatible <span class="muted">(OpenCode Go, OpenAI, OpenRouter, Ollama…)</span></label>
+
+      <div id="anthropic-fields">
+        <label class="field">API key
+          <input name="apiKey" type="password" autocomplete="off" placeholder="sk-ant-…">
+        </label>
+        <label class="field">Model
+          <select name="model"></select>
+        </label>
+      </div>
+
+      <div id="openai-fields" hidden>
+        <label class="field">Dịch vụ
+          <select name="oaPreset"></select>
+        </label>
+        <label class="field">Base URL <span class="muted">(phần trước /chat/completions)</span>
+          <input name="oaBaseUrl" placeholder="https://…/v1" spellcheck="false">
+        </label>
+        <label class="field">API key <span class="muted">(để trống nếu dịch vụ không cần, ví dụ Ollama)</span>
+          <input name="oaApiKey" type="password" autocomplete="off">
+        </label>
+        <div class="field">
+          <label for="oa-model">Model</label>
+          <div class="inline">
+            <input id="oa-model" name="oaModel" list="oa-models" placeholder="VD: glm-5.3" spellcheck="false" autocomplete="off">
+            <button type="button" id="load-models" class="btn">Tải danh sách</button>
+          </div>
+          <datalist id="oa-models"></datalist>
+          <p id="models-status" class="muted small" hidden></p>
+        </div>
+        <p id="opencode-note" class="dlg-warn small" hidden>OpenCode Go dành cho coding agent và có theo dõi lưu lượng bất thường. Dùng gói này để giải thích từ là ngoài mục đích đó, bạn tự cân nhắc điều khoản.</p>
+        <p class="muted small">Lần đầu lưu hoặc tải danh sách model, Chrome sẽ hỏi quyền truy cập địa chỉ Base URL.</p>
+      </div>
+      <p class="muted small">Key chỉ lưu trong trình duyệt này (chrome.storage.local, không mã hoá) và chỉ gửi tới dịch vụ bạn chọn.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Ôn tập</legend>
+      <label class="field">Số thẻ mới mỗi ngày
+        <input name="newPerDay" type="number" min="0" max="999" step="1">
+      </label>
+      <p class="muted small">Thẻ đến hạn ôn lại luôn hiện đủ. Giới hạn này chỉ áp dụng cho thẻ mới, để mỗi ngày không phải học quá nhiều.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Trên trang web</legend>
+      <label class="check"><input type="checkbox" name="enabled"> Bật Sổ Từ (double-click / triple-click để lưu)</label>
+      <label class="check"><input type="checkbox" name="showSaveButton"> Hiện nút <b>+ Sổ Từ</b> khi bôi đen</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Sao lưu</legend>
+      <div class="row">
+        <button type="button" id="backup-export" class="btn">Xuất JSON</button>
+        <label class="btn file">Nhập JSON<input type="file" id="backup-import" accept=".json,application/json" hidden></label>
+      </div>
+    </fieldset>
+
+    <div class="dlg-actions">
+      <button value="cancel" class="btn ghost">Đóng</button>
+      <button id="settings-save" value="default" class="btn primary">Lưu</button>
+    </div>
+  </form>
+</dialog>
+
+<script src="lib.js"></script>
+<script src="review.js"></script>
+</body>
+</html>
